@@ -81,19 +81,17 @@
 
   <script>
     const URL = "./my_model/";
-
     let model, webcam, labelContainer, maxPredictions;
     let threshold = 0.8;
-    let flip = true; // front camera default
+    let flip = true; // default to front camera
     let stream = null;
 
-    // Detect if user is on a mobile device (iPhone or Android)
+    // Detect if user is on a mobile device
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobile) {
       flip = false; // use back camera on mobile
     }
 
-    // Update threshold dynamically
     document.getElementById("threshold").addEventListener("input", (e) => {
       threshold = parseFloat(e.target.value);
       document.getElementById("threshold-value").innerText = threshold.toFixed(2);
@@ -117,55 +115,66 @@
     }
 
     async function setupWebcam() {
-      // Stop current webcam if running
-      if (webcam) {
-        await webcam.stop();
+      // stop any existing stream
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
       }
 
       const facingMode = flip ? "user" : "environment";
 
-      // Use direct getUserMedia for iPhone compatibility
-      const constraints = {
+      // Request video stream properly for iOS
+      let constraints = {
         audio: false,
-        video: { facingMode: { exact: facingMode } }
+        video: { facingMode: facingMode }
       };
 
       try {
         stream = await navigator.mediaDevices.getUserMedia(constraints);
-      } catch (error) {
-        // Fallback if 'exact' mode isn't supported (common on iOS)
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: false,
-          video: { facingMode: facingMode }
-        });
+      } catch (err) {
+        // fallback if facingMode unsupported
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       }
 
-      webcam = new tmImage.Webcam(200, 200, flip);
-      await webcam.setup();
-      webcam.webcam.srcObject = stream;
+      const video = document.createElement("video");
+      video.width = 200;
+      video.height = 200;
+      video.autoplay = true;
+      video.playsInline = true; // critical for iPhone
+      video.muted = true;
+      video.srcObject = stream;
 
-      await webcam.play();
+      await new Promise((resolve) => {
+        video.onloadedmetadata = () => {
+          video.play();
+          resolve();
+        };
+      });
+
+      // create Teachable Machine webcam using the video element
+      webcam = new tmImage.Webcam(200, 200, flip);
+      webcam.webcam = video;
 
       const container = document.getElementById("webcam-container");
       container.innerHTML = "";
-      container.appendChild(webcam.canvas);
+      container.appendChild(video);
     }
 
     async function loop() {
-      webcam.update();
-      await predict();
+      if (webcam && webcam.webcam.readyState === 4) {
+        await predict();
+      }
       window.requestAnimationFrame(loop);
     }
 
     async function predict() {
-      const prediction = await model.predict(webcam.canvas);
+      if (!model || !webcam || !webcam.webcam) return;
+
+      const prediction = await model.predict(webcam.webcam);
       for (let i = 0; i < maxPredictions; i++) {
         const prob = prediction[i].probability;
         const className = prediction[i].className;
         const labelDiv = labelContainer.childNodes[i];
-
         labelDiv.innerHTML = `${className}: ${(prob * 100).toFixed(2)}%`;
-
         if (prob >= threshold) {
           labelDiv.classList.add("highlight");
         } else {

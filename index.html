@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Teachable Machine - Face & Fish Classifier (Camera Switch)</title>
+  <title>Teachable Machine - Face & Fish Classifier</title>
 
-  <!-- Teachable Machine and TensorFlow libraries -->
+  <!-- TensorFlow + Teachable Machine -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
@@ -88,6 +88,12 @@
     let flip = true; // front camera default
     let stream = null;
 
+    // Detect if user is on a mobile device
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      flip = false; // start with back camera on mobile
+    }
+
     // Update threshold dynamically
     document.getElementById("threshold").addEventListener("input", (e) => {
       threshold = parseFloat(e.target.value);
@@ -119,7 +125,7 @@
 
       const facingMode = flip ? "user" : "environment";
 
-      // Access the video stream manually for iPhone compatibility
+      // Access video stream manually for iPhone compatibility
       const constraints = {
         audio: false,
         video: { facingMode: { exact: facingMode } }
@@ -128,14 +134,14 @@
       try {
         stream = await navigator.mediaDevices.getUserMedia(constraints);
       } catch (error) {
-        // Fallback if 'exact' mode isn't supported
+        // Fallback if 'exact' isn't supported (some iPhones)
         stream = await navigator.mediaDevices.getUserMedia({
           audio: false,
           video: { facingMode: facingMode }
         });
       }
 
-      // Create webcam instance using the stream
+      // Create webcam instance using stream
       webcam = new tmImage.Webcam(200, 200, flip);
       await webcam.setup();
       webcam.webcam.srcObject = stream;
@@ -148,7 +154,7 @@
     }
 
     async function switchCamera() {
-      flip = !flip; // toggle between front and back
+      flip = !flip; // toggle front/back
       await setupWebcam(); // reinitialize webcam
     }
 

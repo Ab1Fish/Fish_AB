@@ -112,12 +112,34 @@
     }
 
     async function setupWebcam() {
+      // Stop the current webcam if it's running
       if (webcam) {
         await webcam.stop();
       }
 
+      const facingMode = flip ? "user" : "environment";
+
+      // Access the video stream manually for iPhone compatibility
+      const constraints = {
+        audio: false,
+        video: { facingMode: { exact: facingMode } }
+      };
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (error) {
+        // Fallback if 'exact' mode isn't supported
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: { facingMode: facingMode }
+        });
+      }
+
+      // Create webcam instance using the stream
       webcam = new tmImage.Webcam(200, 200, flip);
-      await webcam.setup({ facingMode: flip ? "user" : "environment" });
+      await webcam.setup();
+      webcam.webcam.srcObject = stream;
+
       await webcam.play();
 
       const container = document.getElementById("webcam-container");

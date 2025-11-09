@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Teachable Machine - Face & Fish Classifier</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teachable Machine - 5 Fish Classifier</title>
 
-  <!-- TensorFlow + Teachable Machine -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
@@ -17,11 +16,9 @@
       margin: 0;
       padding: 20px;
     }
-
     h1 {
       color: #333;
     }
-
     button {
       background-color: #0078ff;
       color: white;
@@ -32,49 +29,40 @@
       font-size: 16px;
       margin: 10px;
     }
-
     button:hover {
       background-color: #005fcc;
     }
-
     #webcam-container {
       margin-top: 20px;
     }
-
     .slider-container {
       margin: 20px auto;
       width: 300px;
       text-align: center;
     }
-
     input[type="range"] {
       width: 100%;
     }
-
     #label-container {
       margin-top: 20px;
       font-size: 18px;
     }
-
     .highlight {
-      color: green;
       font-weight: bold;
+      color: green;
     }
   </style>
 </head>
-
 <body>
-  <h1>Teachable Machine - Face & Fish Classifier</h1>
 
+  <h1>Teachable Machine - 5 Fish Classifier</h1>
   <button onclick="init()">Start Camera</button>
 
   <div id="webcam-container"></div>
 
   <div class="slider-container">
-    <label for="threshold">
-      Confidence Threshold: <span id="threshold-value">0.80</span>
-    </label>
-    <input type="range" id="threshold" min="0" max="1" step="0.01" value="0.80" />
+    <label for="threshold">Confidence Threshold: <span id="threshold-value">0.80</span></label>
+    <input type="range" id="threshold" min="0" max="1" step="0.01" value="0.80">
   </div>
 
   <div id="label-container"></div>
@@ -82,16 +70,15 @@
   <script>
     const URL = "./my_model/";
     let model, webcam, labelContainer, maxPredictions;
-    let threshold = 0.8;
-    let flip = true; // default to front camera
+    let flip = true; // front camera default
     let stream = null;
+    let threshold = 0.8;
 
-    // Detect if user is on a mobile device
+    // Detect mobile devices
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile) {
-      flip = false; // use back camera on mobile
-    }
+    if (isMobile) flip = false; // use back camera on mobile
 
+    // Update threshold slider
     document.getElementById("threshold").addEventListener("input", (e) => {
       threshold = parseFloat(e.target.value);
       document.getElementById("threshold-value").innerText = threshold.toFixed(2);
@@ -107,6 +94,7 @@
       await setupWebcam();
       window.requestAnimationFrame(loop);
 
+      // Setup label elements
       labelContainer = document.getElementById("label-container");
       labelContainer.innerHTML = "";
       for (let i = 0; i < maxPredictions; i++) {
@@ -115,43 +103,44 @@
     }
 
     async function setupWebcam() {
-      // stop any existing stream
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
+      // Stop any existing stream
+      if (stream) stream.getTracks().forEach(track => track.stop());
 
       const facingMode = flip ? "user" : "environment";
-
-      // Request video stream properly for iOS
       let constraints = {
         audio: false,
-        video: { facingMode: facingMode }
+        video: { 
+          width: { ideal: 400 },
+          height: { ideal: 400 },
+          facingMode: facingMode
+        }
       };
 
       try {
         stream = await navigator.mediaDevices.getUserMedia(constraints);
       } catch (err) {
-        // fallback if facingMode unsupported
+        // fallback if facingMode not supported
         stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       }
 
+      // Create video element
       const video = document.createElement("video");
-      video.width = 200;
-      video.height = 200;
+      video.width = 400;
+      video.height = 400;
       video.autoplay = true;
-      video.playsInline = true; // critical for iPhone
+      video.playsInline = true;
       video.muted = true;
       video.srcObject = stream;
 
-      await new Promise((resolve) => {
+      await new Promise(resolve => {
         video.onloadedmetadata = () => {
           video.play();
           resolve();
         };
       });
 
-      // create Teachable Machine webcam using the video element
-      webcam = new tmImage.Webcam(200, 200, flip);
+      // Setup Teachable Machine webcam
+      webcam = new tmImage.Webcam(400, 400, flip);
       webcam.webcam = video;
 
       const container = document.getElementById("webcam-container");
@@ -175,6 +164,7 @@
         const className = prediction[i].className;
         const labelDiv = labelContainer.childNodes[i];
         labelDiv.innerHTML = `${className}: ${(prob * 100).toFixed(2)}%`;
+
         if (prob >= threshold) {
           labelDiv.classList.add("highlight");
         } else {
@@ -183,5 +173,6 @@
       }
     }
   </script>
+
 </body>
 </html>

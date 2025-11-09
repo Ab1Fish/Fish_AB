@@ -3,14 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Face & Fish Classifier</title>
+  <title>Teachable Machine - Face & Fish Classifier (Camera Switch)</title>
+
+  <!-- Teachable Machine and TensorFlow libraries -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
   <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      background: #f2f4f8;
+      background: #f4f6fa;
       margin: 0;
       padding: 20px;
     }
@@ -27,7 +30,7 @@
       border-radius: 8px;
       cursor: pointer;
       font-size: 16px;
-      margin-top: 10px;
+      margin: 10px;
     }
 
     button:hover {
@@ -52,6 +55,11 @@
       margin-top: 20px;
       font-size: 18px;
     }
+
+    .highlight {
+      color: green;
+      font-weight: bold;
+    }
   </style>
 </head>
 
@@ -59,6 +67,7 @@
   <h1>Teachable Machine - Face & Fish Classifier</h1>
 
   <button onclick="init()">Start Camera</button>
+  <button onclick="switchCamera()">Switch Camera</button>
 
   <div id="webcam-container"></div>
 
@@ -73,10 +82,13 @@
 
   <script>
     const URL = "./my_model/";
+
     let model, webcam, labelContainer, maxPredictions;
     let threshold = 0.8;
+    let flip = true; // front camera default
+    let stream = null;
 
-    // Update threshold dynamically when user moves the slider
+    // Update threshold dynamically
     document.getElementById("threshold").addEventListener("input", (e) => {
       threshold = parseFloat(e.target.value);
       document.getElementById("threshold-value").innerText = threshold.toFixed(2);
@@ -89,17 +101,33 @@
       model = await tmImage.load(modelURL, metadataURL);
       maxPredictions = model.getTotalClasses();
 
-      const flip = true;
-      webcam = new tmImage.Webcam(200, 200, flip);
-      await webcam.setup();
-      await webcam.play();
+      await setupWebcam();
       window.requestAnimationFrame(loop);
 
-      document.getElementById("webcam-container").appendChild(webcam.canvas);
       labelContainer = document.getElementById("label-container");
+      labelContainer.innerHTML = "";
       for (let i = 0; i < maxPredictions; i++) {
         labelContainer.appendChild(document.createElement("div"));
       }
+    }
+
+    async function setupWebcam() {
+      if (webcam) {
+        await webcam.stop();
+      }
+
+      webcam = new tmImage.Webcam(200, 200, flip);
+      await webcam.setup({ facingMode: flip ? "user" : "environment" });
+      await webcam.play();
+
+      const container = document.getElementById("webcam-container");
+      container.innerHTML = "";
+      container.appendChild(webcam.canvas);
+    }
+
+    async function switchCamera() {
+      flip = !flip; // toggle between front and back
+      await setupWebcam(); // reinitialize webcam
     }
 
     async function loop() {
@@ -114,14 +142,13 @@
         const prob = prediction[i].probability;
         const className = prediction[i].className;
         const labelDiv = labelContainer.childNodes[i];
+
         labelDiv.innerHTML = `${className}: ${(prob * 100).toFixed(2)}%`;
 
         if (prob >= threshold) {
-          labelDiv.style.color = "green";
-          labelDiv.style.fontWeight = "bold";
+          labelDiv.classList.add("highlight");
         } else {
-          labelDiv.style.color = "#555";
-          labelDiv.style.fontWeight = "normal";
+          labelDiv.classList.remove("highlight");
         }
       }
     }
